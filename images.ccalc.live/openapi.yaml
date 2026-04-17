@@ -1,0 +1,320 @@
+openapi: 3.1.0
+info:
+  title: Cloudflare R2 Image Manager API
+  version: 1.0.0
+  summary: API for listing, uploading, streaming, and deleting images in an R2 bucket.
+  description: >-
+    Developer API for the Cloudflare Worker in this repository.
+    This spec is generated from the current Worker implementation.
+
+tags:
+  - name: Config
+    description: Runtime configuration endpoints.
+  - name: Images
+    description: Image listing, upload, fetch, and delete endpoints.
+
+servers:
+  - url: https://images.ccalc.live
+    description: Production server
+
+x-runtime-settings:
+  r2BucketName: ccalc
+  r2PublicBaseUrl: https://images.ccalc.live
+  bucketListLimit: "500"
+
+paths:
+  /api/config:
+    get:
+      tags: [Config]
+      operationId: getConfig
+      summary: Get runtime configuration
+      description: Returns bucket and URL configuration consumed by the frontend.
+      responses:
+        "200":
+          description: Configuration payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigResponse"
+              examples:
+                default:
+                  value:
+                    bucketBinding: IMAGE_BUCKET
+                    bucketName: ccalc
+                    publicBaseUrl: https://images.ccalc.live
+                    listLimit: "500"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/images:
+    get:
+      tags: [Images]
+      operationId: listImages
+      summary: List images
+      description: >-
+        Lists image objects from the configured R2 bucket root and returns a computed public URL per image.
+      responses:
+        "200":
+          description: Image list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImagesResponse"
+              examples:
+                default:
+                  value:
+                    images:
+                      - key: sample/cat photo.png
+                        size: 34567
+                        uploaded: "2026-04-18T10:30:00.000Z"
+                        etag: 8f7d6c5b
+                        contentType: image/png
+                        url: https://images.ccalc.live/sample/cat%20photo.png
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags: [Images]
+      operationId: uploadImage
+      summary: Upload image
+      description: >-
+        Uploads one image file from multipart/form-data using field name file.
+        Existing objects with the same key are overwritten.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to upload.
+      responses:
+        "201":
+          description: Image uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadImageResponse"
+              examples:
+                created:
+                  value:
+                    image:
+                      key: cat.png
+                      size: 12345
+                      uploaded: "2026-04-18T10:35:00.000Z"
+                      contentType: image/png
+                      url: https://images.ccalc.live/cat.png
+        "400":
+          description: Invalid upload request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalidMultipart:
+                  value:
+                    error: Use multipart/form-data with field name "file".
+                missingField:
+                  value:
+                    error: Missing file field.
+                notImage:
+                  value:
+                    error: Only image files can be uploaded.
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/images/{key}:
+    delete:
+      tags: [Images]
+      operationId: deleteImage
+      summary: Delete image by key
+      description: >-
+        Deletes an R2 object by key. Encode the key before placing it in the URL path.
+      parameters:
+        - $ref: "#/components/parameters/ImageKey"
+      responses:
+        "200":
+          description: Image deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteImageResponse"
+              examples:
+                deleted:
+                  value:
+                    deleted: cat.png
+        "400":
+          description: Missing or invalid key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                keyRequired:
+                  value:
+                    error: Image key is required.
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/images/object/{key}:
+    get:
+      tags: [Images]
+      operationId: fetchImageObject
+      summary: Fetch raw image object
+      description: >-
+        Streams raw image bytes for an object key. This is used as a fallback URL mode when
+        R2_PUBLIC_BASE_URL is empty.
+      parameters:
+        - $ref: "#/components/parameters/ImageKey"
+      responses:
+        "200":
+          description: Binary image stream
+          headers:
+            etag:
+              description: ETag value from R2 object metadata.
+              schema:
+                type: string
+            cache-control:
+              description: Cache policy set by the Worker.
+              schema:
+                type: string
+                example: public, max-age=300
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Missing or invalid key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                keyRequired:
+                  value:
+                    error: Image key is required.
+        "404":
+          description: Image not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                notFound:
+                  value:
+                    error: Image not found.
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  parameters:
+    ImageKey:
+      name: key
+      in: path
+      required: true
+      description: >-
+        Object key (URL-encoded). Keys containing slash characters must be encoded by the client.
+      schema:
+        type: string
+      example: sample%2Fcat%20photo.png
+
+  responses:
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            generic:
+              value:
+                error: Unexpected error.
+
+  schemas:
+    ConfigResponse:
+      type: object
+      additionalProperties: false
+      required: [bucketBinding, bucketName, publicBaseUrl, listLimit]
+      properties:
+        bucketBinding:
+          type: string
+          example: IMAGE_BUCKET
+        bucketName:
+          type: string
+          example: ccalc
+        publicBaseUrl:
+          type: string
+          example: https://images.ccalc.live
+        listLimit:
+          type: string
+          example: "500"
+
+    Image:
+      type: object
+      additionalProperties: false
+      required: [key, size, uploaded, contentType, url]
+      properties:
+        key:
+          type: string
+          example: sample/cat photo.png
+        size:
+          type: integer
+          minimum: 0
+          example: 34567
+        uploaded:
+          type: string
+          format: date-time
+          description: Upload timestamp from R2 metadata.
+          example: "2026-04-18T10:30:00.000Z"
+        etag:
+          type: string
+          description: Present in list responses.
+          example: 8f7d6c5b
+        contentType:
+          type: string
+          example: image/png
+        url:
+          type: string
+          format: uri
+          example: https://images.ccalc.live/sample/cat%20photo.png
+
+    ImagesResponse:
+      type: object
+      additionalProperties: false
+      required: [images]
+      properties:
+        images:
+          type: array
+          items:
+            $ref: "#/components/schemas/Image"
+
+    UploadImageResponse:
+      type: object
+      additionalProperties: false
+      required: [image]
+      properties:
+        image:
+          $ref: "#/components/schemas/Image"
+
+    DeleteImageResponse:
+      type: object
+      additionalProperties: false
+      required: [deleted]
+      properties:
+        deleted:
+          type: string
+          example: cat.png
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: Image not found.

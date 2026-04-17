@@ -218,7 +218,55 @@ export default {
       if (url.pathname.startsWith('/api/images/') && request.method === 'DELETE') {
         return deleteImage(request, env, url.pathname)
       }
+      
+      // Documentation endpoint for Swagger UI
+      if (url.pathname === '/help' && request.method === 'GET') {
+        // Use your actual Worker domain here
+        const specUrl = 'https://images.ccalc.live/help/raw';
 
+        const html = `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>CCalc Image API Documentation</title>
+            <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+          </head>
+          <body>
+            <div id="swagger-ui"></div>
+            <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+            <script>
+              window.onload = () => {
+                window.ui = SwaggerUIBundle({
+                  url: '${specUrl}',
+                  dom_id: '#swagger-ui',
+                  deepLinking: true,
+                  presets: [SwaggerUIBundle.presets.apis],
+                });
+              };
+            </script>
+          </body>
+          </html>
+        `;
+
+        return new Response(html, {
+          headers: { 'content-type': 'text/html; charset=utf-8' },
+        });
+      }
+
+      // Separate route to serve the actual YAML file to the UI
+      if (url.pathname === '/help/raw' && request.method === 'GET') {
+        const object = await env.HELP_BUCKET.get('openapi.yaml');
+        if (!object) return new Response('Not Found', { status: 404 });
+
+        return new Response(object.body, {
+          headers: {
+            'content-type': 'text/yaml; charset=utf-8',
+            'access-control-allow-origin': '*', 
+          },
+        });
+      }
       return json({ error: 'Not found.' }, 404)
     } catch (error) {
       return json({ error: error instanceof Error ? error.message : 'Unexpected error.' }, 500)
