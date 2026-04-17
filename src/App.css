@@ -1,0 +1,147 @@
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2rem 1rem 2.5rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.page-header {
+  background: #ffffff;
+  border: 1px solid #d6dee8;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.status {
+  margin: 0.5rem 0 0;
+}
+
+.config-line {
+  margin: 0.45rem 0 0;
+  font-size: 0.95rem;
+  color: #35546f;
+}
+
+.image-list-wrap {
+  background: #ffffff;
+  border: 1px solid #d6dee8;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+
+.image-list-wrap h2 {
+  margin: 0 0 0.8rem;
+  font-size: 1.3rem;
+}
+
+.image-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.image-card {
+  border: 1px solid #dce5f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8fbff;
+}
+
+.image-card.selected {
+  border-color: #0c7fdd;
+  box-shadow: 0 0 0 2px rgba(12, 127, 221, 0.15);
+}
+
+.image-select {
+  width: 100%;
+  display: grid;
+  gap: 0.4rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.preview-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #d9e7f5;
+}
+
+.image-key {
+  font-size: 0.85rem;
+  color: #1d2a38;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.actions {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+}
+
+.action-button {
+  min-width: 130px;
+  border-radius: 999px;
+  border: 0;
+  color: #ffffff;
+  padding: 0.65rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.action-button.primary {
+  background: #0b8f3d;
+}
+
+.action-button.danger {
+  background: #c63939;
+}
+
+.details {
+  background: #ffffff;
+  border: 1px solid #d6dee8;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.details p {
+  margin: 0;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .page-header h1 {
+    font-size: 1.45rem;
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-button {
+    width: 100%;
+  }
+}

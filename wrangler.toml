@@ -1,0 +1,14 @@
+name = "alife-cloudflare-api"
+main = "worker/index.js"
+compatibility_date = "2026-04-17"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "IMAGE_BUCKET"
+bucket_name = "YOUR_BUCKET_NAME"
+preview_bucket_name = "YOUR_BUCKET_NAME"
+
+[vars]
+R2_BUCKET_NAME = "YOUR_BUCKET_NAME"
+R2_PUBLIC_BASE_URL = ""
+BUCKET_LIST_LIMIT = "500"

@@ -1,0 +1,5 @@
+# Copy to .dev.vars and edit values.
+# For local wrangler dev, vars here override [vars] in wrangler.toml.
+R2_BUCKET_NAME=YOUR_BUCKET_NAME
+R2_PUBLIC_BASE_URL=
+BUCKET_LIST_LIMIT=500
