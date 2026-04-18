@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-permissions:
+    permissions:
       contents: read
       pull-requests: write # Allows Azure to comment on PRs with preview links
     steps:
@@ -41,4 +41,3 @@ permissions:
           app_location: "dist" # Vite default output folder
           output_location: "" 
           skip_app_build: true
-          
