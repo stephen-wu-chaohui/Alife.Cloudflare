@@ -13,8 +13,9 @@ concurrency:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    permissions:
+permissions:
       contents: read
+      pull-requests: write # Allows Azure to comment on PRs with preview links
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,6 +38,7 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: dist
-          output_location: ""
+          app_location: "dist" # Vite default output folder
+          output_location: "" 
           skip_app_build: true
+          
