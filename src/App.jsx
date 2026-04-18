@@ -85,6 +85,39 @@ function normalizeAccessUrl(value) {
   return value
 }
 
+function detectAppEnvironment() {
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent || '' : ''
+  const hasLineToken = /\bLine\//i.test(userAgent)
+  const hasLiffToken = /\bLIFF\b/i.test(userAgent)
+  const hasLiffObject = typeof window !== 'undefined' && Boolean(window.liff)
+  const isLine = hasLineToken || hasLiffToken || hasLiffObject
+
+  const hasStandaloneMediaQuery =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(display-mode: standalone)').matches
+  const hasIosStandalone = typeof navigator !== 'undefined' && navigator.standalone === true
+  const hasAndroidTrustedWebAppReferrer =
+    typeof document !== 'undefined' &&
+    typeof document.referrer === 'string' &&
+    document.referrer.startsWith('android-app://')
+
+  const isStandalone =
+    hasStandaloneMediaQuery || hasIosStandalone || hasAndroidTrustedWebAppReferrer
+
+  const runtime = isLine ? 'LINE' : isStandalone ? 'Standalone PWA' : 'Browser'
+
+  return {
+    runtime,
+    isLine,
+    isStandalone,
+    displayMode: hasStandaloneMediaQuery ? 'standalone' : 'browser',
+    language: typeof navigator !== 'undefined' ? navigator.language || EMPTY_VALUE : EMPTY_VALUE,
+    platform: typeof navigator !== 'undefined' ? navigator.platform || EMPTY_VALUE : EMPTY_VALUE,
+    userAgent: userAgent || EMPTY_VALUE,
+  }
+}
+
 function App() {
   const fileInputRef = useRef(null)
   const [images, setImages] = useState([])
@@ -97,6 +130,8 @@ function App() {
   const [fsPathLine, setFsPathLine] = useState(EMPTY_VALUE)
   const [urlLine, setUrlLine] = useState(EMPTY_VALUE)
   const [infoLine, setInfoLine] = useState(EMPTY_VALUE)
+
+  const environment = useMemo(() => detectAppEnvironment(), [])
 
   const selectedImage = useMemo(
     () => images.find((item) => item.key === selectedKey) ?? null,
@@ -360,6 +395,31 @@ function App() {
         </p>
         <p>
           <strong>Basic image info:</strong> {infoLine}
+        </p>
+      </section>
+
+      <section className="environment" aria-label="Runtime environment information">
+        <h2>Environment</h2>
+        <p>
+          <strong>Running in:</strong> {environment.runtime}
+        </p>
+        <p>
+          <strong>LINE context:</strong> {environment.isLine ? 'Yes' : 'No'}
+        </p>
+        <p>
+          <strong>PWA standalone:</strong> {environment.isStandalone ? 'Yes' : 'No'}
+        </p>
+        <p>
+          <strong>Display mode:</strong> {environment.displayMode}
+        </p>
+        <p>
+          <strong>Platform:</strong> {environment.platform}
+        </p>
+        <p>
+          <strong>Language:</strong> {environment.language}
+        </p>
+        <p>
+          <strong>User agent:</strong> {environment.userAgent}
         </p>
       </section>
     </main>
