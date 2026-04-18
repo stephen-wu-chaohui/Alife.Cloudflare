@@ -265,8 +265,61 @@ function configResponse(env) {
     bucketName: env.R2_BUCKET_NAME ?? EMPTY,
     publicBaseUrl: env.R2_PUBLIC_BASE_URL ?? EMPTY,
     listLimit: env.BUCKET_LIST_LIMIT ?? '500',
+    helpBucketObjectKey: env.HELP_BUCKET_OBJECT_KEY ?? 'openapi.yaml',
   })
 }
+
+const OPENAPI_FALLBACK_YAML = `openapi: 3.1.0
+info:
+  title: CCalc Image API
+  version: 1.0.0
+servers:
+  - url: https://images.ccalc.live
+paths:
+  /api/config:
+    get:
+      summary: Get API runtime config
+      responses:
+        '200':
+          description: OK
+  /api/images:
+    get:
+      summary: List images
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Upload image
+      requestBody:
+        required: true
+      responses:
+        '201':
+          description: Created
+  /api/images/{key}:
+    delete:
+      summary: Delete image by key
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+  /api/images/object/{key}:
+    get:
+      summary: Stream image object
+      parameters:
+        - in: path
+          name: key
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+`
 
 const EMPTY = ''
 
@@ -337,15 +390,30 @@ export default {
 
       // Separate route to serve the actual YAML file to the UI
       if (url.pathname === '/help/raw' && request.method === 'GET') {
-        const object = await env.HELP_BUCKET.get('openapi.yaml');
-        if (!object) return new Response('Not Found', { status: 404 });
+        const helpBucket = env.HELP_BUCKET
+        const objectKey =
+          typeof env.HELP_BUCKET_OBJECT_KEY === 'string' && env.HELP_BUCKET_OBJECT_KEY.trim()
+            ? env.HELP_BUCKET_OBJECT_KEY.trim()
+            : 'openapi.yaml'
 
-        return new Response(object.body, {
+        if (helpBucket) {
+          const object = await helpBucket.get(objectKey)
+          if (object) {
+            return new Response(object.body, {
+              headers: {
+                'content-type': 'text/yaml; charset=utf-8',
+                'access-control-allow-origin': '*',
+              },
+            })
+          }
+        }
+
+        return new Response(OPENAPI_FALLBACK_YAML, {
           headers: {
             'content-type': 'text/yaml; charset=utf-8',
-            'access-control-allow-origin': '*', 
+            'access-control-allow-origin': '*',
           },
-        });
+        })
       }
 
       if (request.method === 'GET' && url.pathname !== '/' && !url.pathname.startsWith('/help')) {

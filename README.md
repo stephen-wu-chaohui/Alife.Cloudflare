@@ -59,6 +59,16 @@ The Vite dev server proxies `/api/*` to the Worker.
 npm run deploy:api
 ```
 
+## Deploy OpenAPI Spec
+
+When you update the API documentation file at `images.ccalc.live/openapi.yaml`, upload it to R2 with:
+
+```bash
+npm run deploy:openapi
+```
+
+This updates the object key used by `https://images.ccalc.live/help/raw`.
+
 ## Domain Strategy
 
 Using `cloudflare.ccalc.live` for this PWA makes sense and fits a clean subdomain structure.
