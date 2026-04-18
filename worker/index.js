@@ -35,6 +35,39 @@ function json(value, status = 200) {
   })
 }
 
+function corsHeaders(request) {
+  const origin = request.headers.get('origin') || '*'
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
+    'access-control-allow-headers': 'content-type,authorization',
+    'access-control-max-age': '86400',
+    vary: 'origin',
+  }
+}
+
+function withCors(response, request) {
+  const headers = new Headers(response.headers)
+  const extraHeaders = corsHeaders(request)
+
+  Object.entries(extraHeaders).forEach(([key, value]) => {
+    headers.set(key, value)
+  })
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
+}
+
+function handleOptions(request) {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders(request),
+  })
+}
+
 function getKeyExtension(key) {
   const tokens = key.toLowerCase().split('.')
   return tokens.length > 1 ? tokens.at(-1) : ''
@@ -199,24 +232,28 @@ export default {
     const url = new URL(request.url)
 
     try {
+      if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
+        return handleOptions(request)
+      }
+
       if (url.pathname === '/api/config' && request.method === 'GET') {
-        return configResponse(env)
+        return withCors(configResponse(env), request)
       }
 
       if (url.pathname === '/api/images' && request.method === 'GET') {
-        return listImages(request, env)
+        return withCors(await listImages(request, env), request)
       }
 
       if (url.pathname === '/api/images' && request.method === 'POST') {
-        return uploadImage(request, env)
+        return withCors(await uploadImage(request, env), request)
       }
 
       if (url.pathname.startsWith('/api/images/object/') && request.method === 'GET') {
-        return fetchObject(request, env, url.pathname)
+        return withCors(await fetchObject(request, env, url.pathname), request)
       }
 
       if (url.pathname.startsWith('/api/images/') && request.method === 'DELETE') {
-        return deleteImage(request, env, url.pathname)
+        return withCors(await deleteImage(request, env, url.pathname), request)
       }
       
       // Documentation endpoint for Swagger UI
@@ -267,8 +304,19 @@ export default {
           },
         });
       }
+      if (url.pathname.startsWith('/api/')) {
+        return withCors(json({ error: 'Not found.' }, 404), request)
+      }
+
       return json({ error: 'Not found.' }, 404)
     } catch (error) {
+      if (url.pathname.startsWith('/api/')) {
+        return withCors(
+          json({ error: error instanceof Error ? error.message : 'Unexpected error.' }, 500),
+          request,
+        )
+      }
+
       return json({ error: error instanceof Error ? error.message : 'Unexpected error.' }, 500)
     }
   },

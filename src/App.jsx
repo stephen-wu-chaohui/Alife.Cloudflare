@@ -3,6 +3,17 @@ import './App.css'
 
 const EMPTY_VALUE = '-'
 const SKELETON_CARD_COUNT = 6
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? '' : 'https://images.ccalc.live')
+
+function buildApiUrl(path) {
+  if (!API_BASE_URL) {
+    return path
+  }
+
+  return `${API_BASE_URL.replace(/\/$/, '')}${path}`
+}
 
 function formatBytes(size) {
   if (!Number.isFinite(size) || size < 0) {
@@ -161,7 +172,7 @@ function App() {
 
   async function refreshImages({ keepCurrentSelection = true } = {}) {
     setIsLoading(true)
-    const response = await fetch('/api/images')
+    const response = await fetch(buildApiUrl('/api/images'))
     if (!response.ok) {
       throw new Error(`Unable to load images (${response.status})`)
     }
@@ -189,8 +200,8 @@ function App() {
     async function bootstrap() {
       try {
         const [configResponse, imagesResponse] = await Promise.all([
-          fetch('/api/config'),
-          fetch('/api/images'),
+          fetch(buildApiUrl('/api/config')),
+          fetch(buildApiUrl('/api/images')),
         ])
 
         if (!configResponse.ok) {
@@ -234,7 +245,7 @@ function App() {
     setIsDeleting(true)
 
     try {
-      const response = await fetch(`/api/images/${encodeURIComponent(selectedImage.key)}`, {
+      const response = await fetch(buildApiUrl(`/api/images/${encodeURIComponent(selectedImage.key)}`), {
         method: 'DELETE',
       })
 
@@ -278,7 +289,7 @@ function App() {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('/api/images', {
+      const response = await fetch(buildApiUrl('/api/images'), {
         method: 'POST',
         body: formData,
       })
