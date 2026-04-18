@@ -49,6 +49,51 @@
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
 
+.animate-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.skeleton-grid .image-card {
+  background: #f2f7fc;
+}
+
+.skeleton-card {
+  cursor: default;
+}
+
+.skeleton-thumbnail {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: linear-gradient(120deg, #cfdeee, #e5eef7);
+}
+
+.skeleton-title,
+.skeleton-speaker {
+  border-radius: 999px;
+  background: #d4e3f3;
+}
+
+.skeleton-title {
+  height: 0.8rem;
+  width: 82%;
+}
+
+.skeleton-speaker {
+  height: 0.72rem;
+  width: 58%;
+}
+
 .image-card {
   border: 1px solid #dce5f0;
   border-radius: 12px;

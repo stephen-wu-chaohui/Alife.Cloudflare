@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const EMPTY_VALUE = '-'
+const SKELETON_CARD_COUNT = 6
 
 function formatBytes(size) {
   if (!Number.isFinite(size) || size < 0) {
@@ -282,12 +283,24 @@ function App() {
 
       <section className="image-list-wrap">
         <h2>Root Directory Images</h2>
-        {isLoading ? <p>Loading...</p> : null}
+        {isLoading ? (
+          <ul className="image-grid skeleton-grid" role="list" aria-label="Loading images">
+            {Array.from({ length: SKELETON_CARD_COUNT }).map((_, index) => (
+              <li key={`skeleton-${index}`} className="image-card">
+                <div className="image-select animate-pulse skeleton-card" aria-hidden="true">
+                  <div className="skeleton-thumbnail" />
+                  <div className="skeleton-title" />
+                  <div className="skeleton-speaker" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         {!isLoading && images.length === 0 ? (
           <p>No images found in bucket root.</p>
         ) : (
-          <ul className="image-grid" role="list">
+          <ul className="image-grid" role="list" hidden={isLoading}>
             {images.map((image) => (
               <li
                 key={image.key}
