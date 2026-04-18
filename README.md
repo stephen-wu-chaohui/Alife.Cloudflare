@@ -59,6 +59,49 @@ The Vite dev server proxies `/api/*` to the Worker.
 npm run deploy:api
 ```
 
+## Domain Strategy
+
+Using `cloudflare.ccalc.live` for this PWA makes sense and fits a clean subdomain structure.
+
+Recommended layout:
+
+- `cloudflare.ccalc.live` -> Frontend (Azure Static Web Apps)
+- `images.ccalc.live` -> Cloudflare Worker API + public image URLs backed by R2
+- `demo.ccalc.live`, `dev.ccalc.live` -> Other environments/sites
+
+This split keeps frontend hosting and storage/API concerns separated while staying easy to reason about.
+
+## Custom Domain Setup
+
+### 1) Frontend domain (`cloudflare.ccalc.live`)
+
+1. In Azure Static Web Apps, add custom domain `cloudflare.ccalc.live`.
+2. In Cloudflare DNS, create/update the record Azure asks for (usually a CNAME).
+3. Complete domain validation in Azure.
+4. Keep HTTPS enabled after validation.
+
+### 2) API/storage domain (`images.ccalc.live`)
+
+1. In Cloudflare Workers, attach custom domain `images.ccalc.live` to this Worker.
+2. Ensure no old Worker route is still bound to `images.ccalc.live`.
+3. Keep DNS proxied in Cloudflare.
+
+### 3) Frontend build environment
+
+Set the frontend API base URL to `https://images.ccalc.live` for production builds.
+
+Current GitHub Actions workflow already sets:
+
+- `VITE_API_BASE_URL=https://images.ccalc.live`
+
+### 4) Worker runtime variables
+
+Set these in Worker config (`wrangler.toml` and/or Cloudflare dashboard):
+
+- `R2_BUCKET_NAME=ccalc`
+- `R2_PUBLIC_BASE_URL=https://images.ccalc.live`
+- `BUCKET_LIST_LIMIT=500`
+
 ## API Summary
 
 - `GET /api/config` - bucket configuration consumed by UI

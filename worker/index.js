@@ -90,14 +90,29 @@ function keyToUrlPath(key) {
 
 function toImageUrl(request, env, key) {
   const base = typeof env.R2_PUBLIC_BASE_URL === 'string' ? env.R2_PUBLIC_BASE_URL.trim() : ''
-  const path = keyToUrlPath(key)
+  const origin = new URL(request.url).origin
+  const apiObjectUrl = `${origin}/api/images/object/${encodeURIComponent(key)}`
 
-  if (base) {
-    return `${base.replace(/\/$/, '')}/${path}`
+  if (!base) {
+    return apiObjectUrl
   }
 
-  const origin = new URL(request.url).origin
-  return `${origin}/api/images/object/${encodeURIComponent(key)}`
+  let baseUrl
+  try {
+    baseUrl = new URL(base)
+  } catch {
+    return apiObjectUrl
+  }
+
+  // If API is being consumed from a different origin (for example workers.dev
+  // while a custom domain is still being migrated), prefer the guaranteed
+  // same-origin object endpoint.
+  if (baseUrl.origin !== origin) {
+    return apiObjectUrl
+  }
+
+  const path = keyToUrlPath(key)
+  return `${base.replace(/\/$/, '')}/${path}`
 }
 
 function sanitizeFileName(name) {
@@ -216,6 +231,34 @@ async function fetchObject(request, env, pathname) {
   })
 }
 
+async function fetchObjectByPublicPath(env, pathname) {
+  const key = pathname
+    .replace(/^\/+/, '')
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => decodeURIComponent(segment))
+    .join('/')
+
+  if (!key) {
+    return json({ error: 'Image key is required.' }, 400)
+  }
+
+  const object = await env.IMAGE_BUCKET.get(key)
+  if (!object) {
+    return json({ error: 'Image not found.' }, 404)
+  }
+
+  const headers = new Headers()
+  object.writeHttpMetadata(headers)
+  headers.set('etag', object.httpEtag)
+  headers.set('cache-control', 'public, max-age=300')
+
+  return new Response(object.body, {
+    status: 200,
+    headers,
+  })
+}
+
 function configResponse(env) {
   return json({
     bucketBinding: 'IMAGE_BUCKET',
@@ -304,6 +347,11 @@ export default {
           },
         });
       }
+
+      if (request.method === 'GET' && url.pathname !== '/' && !url.pathname.startsWith('/help')) {
+        return fetchObjectByPublicPath(env, url.pathname)
+      }
+
       if (url.pathname.startsWith('/api/')) {
         return withCors(json({ error: 'Not found.' }, 404), request)
       }
