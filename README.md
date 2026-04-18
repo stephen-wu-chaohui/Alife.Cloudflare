@@ -59,6 +59,19 @@ The Vite dev server proxies `/api/*` to the Worker.
 npm run deploy:api
 ```
 
+## Deploy UI to Azure Static Web Apps
+
+The React UI can be deployed as a [PWA](https://web.dev/progressive-web-apps/) to [Azure Static Web Apps](https://learn.microsoft.com/en-us/azure/static-web-apps/).
+
+### GitHub Actions (automated)
+
+1. Create an Azure Static Web App resource in the Azure portal.
+2. Copy the deployment token from **Manage deployment token** in the Azure portal.
+3. Add it as a repository secret named `AZURE_STATIC_WEB_APPS_API_TOKEN` in **Settings → Secrets and variables → Actions**.
+4. Push to `main` — the workflow in `.github/workflows/azure-static-web-apps.yml` will build and deploy automatically.
+
+> **Note:** The `/api/*` routes must still be served by the Cloudflare Worker. Configure the Azure SWA to proxy `/api/*` to the deployed Worker URL, or update the app's API base URL for the Azure environment.
+
 ## API Summary
 
 - `GET /api/config` - bucket configuration consumed by UI
