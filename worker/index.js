@@ -1,275 +1,248 @@
-const IMAGE_EXTENSIONS = new Set([
-  'jpg',
-  'jpeg',
-  'png',
-  'gif',
-  'webp',
-  'avif',
-  'bmp',
-  'svg',
-  'tif',
-  'tiff',
-  'ico',
-])
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-const TYPE_BY_EXTENSION = {
-  avif: 'image/avif',
-  bmp: 'image/bmp',
-  gif: 'image/gif',
-  ico: 'image/x-icon',
-  jpeg: 'image/jpeg',
-  jpg: 'image/jpeg',
-  png: 'image/png',
-  svg: 'image/svg+xml',
-  tif: 'image/tiff',
-  tiff: 'image/tiff',
-  webp: 'image/webp',
-}
+// worker/index.js
+var IMAGE_EXTENSIONS = /* @__PURE__ */ new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "avif",
+  "bmp",
+  "svg",
+  "tif",
+  "tiff",
+  "ico"
+]);
+
+var TYPE_BY_EXTENSION = {
+  avif: "image/avif",
+  bmp: "image/bmp",
+  gif: "image/gif",
+  ico: "image/x-icon",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  svg: "image/svg+xml",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  webp: "image/webp"
+};
 
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
     headers: {
-      'content-type': 'application/json; charset=utf-8',
-    },
-  })
+      "content-type": "application/json; charset=utf-8"
+    }
+  });
 }
+__name(json, "json");
 
 function corsHeaders(request) {
-  const origin = request.headers.get('origin') || '*'
+  const origin = request.headers.get("origin") || "*";
   return {
-    'access-control-allow-origin': origin,
-    'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
-    'access-control-allow-headers': 'content-type,authorization',
-    'access-control-max-age': '86400',
-    vary: 'origin',
-  }
+    "access-control-allow-origin": origin,
+    "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+    "access-control-allow-headers": "content-type,authorization",
+    "access-control-max-age": "86400",
+    vary: "origin"
+  };
 }
+__name(corsHeaders, "corsHeaders");
 
 function withCors(response, request) {
-  const headers = new Headers(response.headers)
-  const extraHeaders = corsHeaders(request)
-
+  const headers = new Headers(response.headers);
+  const extraHeaders = corsHeaders(request);
   Object.entries(extraHeaders).forEach(([key, value]) => {
-    headers.set(key, value)
-  })
-
+    headers.set(key, value);
+  });
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers,
-  })
+    headers
+  });
 }
+__name(withCors, "withCors");
 
 function handleOptions(request) {
   return new Response(null, {
     status: 204,
-    headers: corsHeaders(request),
-  })
+    headers: corsHeaders(request)
+  });
 }
+__name(handleOptions, "handleOptions");
 
 function getKeyExtension(key) {
-  const tokens = key.toLowerCase().split('.')
-  return tokens.length > 1 ? tokens.at(-1) : ''
+  const tokens = key.toLowerCase().split(".");
+  return tokens.length > 1 ? tokens.at(-1) : "";
 }
+__name(getKeyExtension, "getKeyExtension");
 
 function isImageObject(objectKey, contentType) {
-  if (typeof contentType === 'string' && contentType.startsWith('image/')) {
-    return true
+  if (typeof contentType === "string" && contentType.startsWith("image/")) {
+    return true;
   }
-
-  return IMAGE_EXTENSIONS.has(getKeyExtension(objectKey))
+  return IMAGE_EXTENSIONS.has(getKeyExtension(objectKey));
 }
+__name(isImageObject, "isImageObject");
 
 function keyToUrlPath(key) {
-  return key
-    .split('/')
-    .map((segment) => encodeURIComponent(segment))
-    .join('/')
+  return key.split("/").map((segment) => encodeURIComponent(segment)).join("/");
 }
+__name(keyToUrlPath, "keyToUrlPath");
 
 function toImageUrl(request, env, key) {
-  const base = typeof env.R2_PUBLIC_BASE_URL === 'string' ? env.R2_PUBLIC_BASE_URL.trim() : ''
-  const origin = new URL(request.url).origin
-  const apiObjectUrl = `${origin}/api/images/object/${encodeURIComponent(key)}`
-
+  const base = typeof env.R2_PUBLIC_BASE_URL === "string" ? env.R2_PUBLIC_BASE_URL.trim() : "";
+  const origin = new URL(request.url).origin;
+  const apiObjectUrl = `${origin}/api/images/object/${encodeURIComponent(key)}`;
   if (!base) {
-    return apiObjectUrl
+    return apiObjectUrl;
   }
-
-  let baseUrl
+  let baseUrl;
   try {
-    baseUrl = new URL(base)
+    baseUrl = new URL(base);
   } catch {
-    return apiObjectUrl
+    return apiObjectUrl;
   }
-
-  // If API is being consumed from a different origin (for example workers.dev
-  // while a custom domain is still being migrated), prefer the guaranteed
-  // same-origin object endpoint.
   if (baseUrl.origin !== origin) {
-    return apiObjectUrl
+    return apiObjectUrl;
   }
-
-  const path = keyToUrlPath(key)
-  return `${base.replace(/\/$/, '')}/${path}`
+  const path = keyToUrlPath(key);
+  return `${base.replace(/\/$/, "")}/${path}`;
 }
+__name(toImageUrl, "toImageUrl");
 
 function sanitizeFileName(name) {
-  const trimmed = name.trim()
+  const trimmed = name.trim();
   if (!trimmed) {
-    return `upload-${Date.now()}`
+    return `upload-${Date.now()}`;
   }
-
-  return trimmed
-    .replace(/\\/g, '/')
-    .split('/')
-    .at(-1)
-    .replace(/\s+/g, '-')
+  return trimmed.replace(/\\/g, "/").split("/").at(-1).replace(/\s+/g, "-");
 }
+__name(sanitizeFileName, "sanitizeFileName");
 
 async function listImages(request, env) {
-  const configuredLimit = Number.parseInt(env.BUCKET_LIST_LIMIT ?? '500', 10)
-  const limit = Number.isFinite(configuredLimit) && configuredLimit > 0 ? configuredLimit : 500
-
+  const configuredLimit = Number.parseInt(env.BUCKET_LIST_LIMIT ?? "500", 10);
+  const limit = Number.isFinite(configuredLimit) && configuredLimit > 0 ? configuredLimit : 500;
   const listing = await env.IMAGE_BUCKET.list({
-    delimiter: '/',
-    limit,
-  })
-
-  const images = listing.objects
-    .filter((object) => isImageObject(object.key, object.httpMetadata?.contentType))
-    .map((object) => ({
-      key: object.key,
-      size: object.size,
-      uploaded: object.uploaded,
-      etag: object.httpEtag,
-      contentType: object.httpMetadata?.contentType || TYPE_BY_EXTENSION[getKeyExtension(object.key)] || EMPTY,
-      url: toImageUrl(request, env, object.key),
-    }))
-    .sort((left, right) => String(right.uploaded).localeCompare(String(left.uploaded)))
-
-  return json({ images })
+    delimiter: "/",
+    limit
+  });
+  const images = listing.objects.filter((object) => isImageObject(object.key, object.httpMetadata?.contentType)).map((object) => ({
+    key: object.key,
+    size: object.size,
+    uploaded: object.uploaded,
+    etag: object.httpEtag,
+    contentType: object.httpMetadata?.contentType || TYPE_BY_EXTENSION[getKeyExtension(object.key)] || EMPTY,
+    url: toImageUrl(request, env, object.key)
+  })).sort((left, right) => String(right.uploaded).localeCompare(String(left.uploaded)));
+  return json({ images });
 }
+__name(listImages, "listImages");
 
 async function uploadImage(request, env) {
-  const contentType = request.headers.get('content-type') || ''
-  if (!contentType.toLowerCase().includes('multipart/form-data')) {
-    return json({ error: 'Use multipart/form-data with field name "file".' }, 400)
+  const contentType = request.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("multipart/form-data")) {
+    return json({ error: 'Use multipart/form-data with field name "file".' }, 400);
   }
-
-  const formData = await request.formData()
-  const file = formData.get('file')
-
+  const formData = await request.formData();
+  const file = formData.get("file");
   if (!(file instanceof File)) {
-    return json({ error: 'Missing file field.' }, 400)
+    return json({ error: "Missing file field." }, 400);
   }
-
-  const extension = getKeyExtension(file.name)
-  const candidateType = file.type || TYPE_BY_EXTENSION[extension] || ''
+  const extension = getKeyExtension(file.name);
+  const candidateType = file.type || TYPE_BY_EXTENSION[extension] || "";
   if (!isImageObject(file.name, candidateType)) {
-    return json({ error: 'Only image files can be uploaded.' }, 400)
+    return json({ error: "Only image files can be uploaded." }, 400);
   }
-
-  const key = sanitizeFileName(file.name)
-
+  const key = sanitizeFileName(file.name);
   await env.IMAGE_BUCKET.put(key, file.stream(), {
     httpMetadata: {
-      contentType: candidateType || 'application/octet-stream',
-    },
-  })
-
-  const uploadedObject = await env.IMAGE_BUCKET.head(key)
-
+      contentType: candidateType || "application/octet-stream"
+    }
+  });
+  const uploadedObject = await env.IMAGE_BUCKET.head(key);
   return json(
     {
       image: {
         key,
         size: uploadedObject?.size ?? file.size,
-        uploaded: uploadedObject?.uploaded ?? new Date().toISOString(),
+        uploaded: uploadedObject?.uploaded ?? (/* @__PURE__ */ new Date()).toISOString(),
         contentType: uploadedObject?.httpMetadata?.contentType || candidateType || EMPTY,
-        url: toImageUrl(request, env, key),
-      },
+        url: toImageUrl(request, env, key)
+      }
     },
-    201,
-  )
+    201
+  );
 }
+__name(uploadImage, "uploadImage");
 
 async function deleteImage(request, env, pathname) {
-  const encodedKey = pathname.slice('/api/images/'.length)
-  const key = decodeURIComponent(encodedKey)
-
+  const encodedKey = pathname.slice("/api/images/".length);
+  const key = decodeURIComponent(encodedKey);
   if (!key) {
-    return json({ error: 'Image key is required.' }, 400)
+    return json({ error: "Image key is required." }, 400);
   }
-
-  await env.IMAGE_BUCKET.delete(key)
-  return json({ deleted: key })
+  await env.IMAGE_BUCKET.delete(key);
+  return json({ deleted: key });
 }
+__name(deleteImage, "deleteImage");
 
 async function fetchObject(request, env, pathname) {
-  const encodedKey = pathname.slice('/api/images/object/'.length)
-  const key = decodeURIComponent(encodedKey)
-
+  const encodedKey = pathname.slice("/api/images/object/".length);
+  const key = decodeURIComponent(encodedKey);
   if (!key) {
-    return json({ error: 'Image key is required.' }, 400)
+    return json({ error: "Image key is required." }, 400);
   }
-
-  const object = await env.IMAGE_BUCKET.get(key)
+  const object = await env.IMAGE_BUCKET.get(key);
   if (!object) {
-    return json({ error: 'Image not found.' }, 404)
+    return json({ error: "Image not found." }, 404);
   }
-
-  const headers = new Headers()
-  object.writeHttpMetadata(headers)
-  headers.set('etag', object.httpEtag)
-  headers.set('cache-control', 'public, max-age=300')
-
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("cache-control", "public, max-age=300");
   return new Response(object.body, {
     status: 200,
-    headers,
-  })
+    headers
+  });
 }
+__name(fetchObject, "fetchObject");
 
 async function fetchObjectByPublicPath(env, pathname) {
-  const key = pathname
-    .replace(/^\/+/, '')
-    .split('/')
-    .filter(Boolean)
-    .map((segment) => decodeURIComponent(segment))
-    .join('/')
-
+  const key = pathname.replace(/^\/+/, "").split("/").filter(Boolean).map((segment) => decodeURIComponent(segment)).join("/");
   if (!key) {
-    return json({ error: 'Image key is required.' }, 400)
+    return json({ error: "Image key is required." }, 400);
   }
-
-  const object = await env.IMAGE_BUCKET.get(key)
+  const object = await env.IMAGE_BUCKET.get(key);
   if (!object) {
-    return json({ error: 'Image not found.' }, 404)
+    return json({ error: "Image not found." }, 404);
   }
-
-  const headers = new Headers()
-  object.writeHttpMetadata(headers)
-  headers.set('etag', object.httpEtag)
-  headers.set('cache-control', 'public, max-age=300')
-
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("cache-control", "public, max-age=300");
   return new Response(object.body, {
     status: 200,
-    headers,
-  })
+    headers
+  });
 }
+__name(fetchObjectByPublicPath, "fetchObjectByPublicPath");
 
 function configResponse(env) {
   return json({
-    bucketBinding: 'IMAGE_BUCKET',
+    bucketBinding: "IMAGE_BUCKET",
     bucketName: env.R2_BUCKET_NAME ?? EMPTY,
     publicBaseUrl: env.R2_PUBLIC_BASE_URL ?? EMPTY,
-    listLimit: env.BUCKET_LIST_LIMIT ?? '500',
-    helpBucketObjectKey: env.HELP_BUCKET_OBJECT_KEY ?? 'openapi.yaml',
-  })
+    listLimit: env.BUCKET_LIST_LIMIT ?? "500",
+    helpBucketObjectKey: env.HELP_BUCKET_OBJECT_KEY ?? "openapi.yaml"
+  });
 }
+__name(configResponse, "configResponse");
 
-const OPENAPI_FALLBACK_YAML = `openapi: 3.1.0
+var OPENAPI_FALLBACK_YAML = `openapi: 3.1.0
 info:
   title: CCalc Image API
   version: 1.0.0
@@ -319,44 +292,34 @@ paths:
       responses:
         '200':
           description: OK
-`
+`;
 
-const EMPTY = ''
+var EMPTY = "";
 
-export default {
+var index_default = {
   async fetch(request, env) {
-    const url = new URL(request.url)
-
+    const url = new URL(request.url);
     try {
-      if (request.method === 'OPTIONS' && url.pathname.startsWith('/api/')) {
-        return handleOptions(request)
+      if (request.method === "OPTIONS" && url.pathname.startsWith("/api/")) {
+        return handleOptions(request);
       }
-
-      if (url.pathname === '/api/config' && request.method === 'GET') {
-        return withCors(configResponse(env), request)
+      if (url.pathname === "/api/config" && request.method === "GET") {
+        return withCors(configResponse(env), request);
       }
-
-      if (url.pathname === '/api/images' && request.method === 'GET') {
-        return withCors(await listImages(request, env), request)
+      if (url.pathname === "/api/images" && request.method === "GET") {
+        return withCors(await listImages(request, env), request);
       }
-
-      if (url.pathname === '/api/images' && request.method === 'POST') {
-        return withCors(await uploadImage(request, env), request)
+      if (url.pathname === "/api/images" && request.method === "POST") {
+        return withCors(await uploadImage(request, env), request);
       }
-
-      if (url.pathname.startsWith('/api/images/object/') && request.method === 'GET') {
-        return withCors(await fetchObject(request, env, url.pathname), request)
+      if (url.pathname.startsWith("/api/images/object/") && request.method === "GET") {
+        return withCors(await fetchObject(request, env, url.pathname), request);
       }
-
-      if (url.pathname.startsWith('/api/images/') && request.method === 'DELETE') {
-        return withCors(await deleteImage(request, env, url.pathname), request)
+      if (url.pathname.startsWith("/api/images/") && request.method === "DELETE") {
+        return withCors(await deleteImage(request, env, url.pathname), request);
       }
-      
-      // Documentation endpoint for Swagger UI
-      if (url.pathname === '/help' && request.method === 'GET') {
-        // Use your actual Worker domain here
-        const specUrl = 'https://images.ccalc.live/help/raw';
-
+      if (url.pathname === "/help" && request.method === "GET") {
+        const specUrl = "https://images.ccalc.live/help/raw";
         const html = `
           <!DOCTYPE html>
           <html lang="en">
@@ -368,7 +331,7 @@ export default {
           </head>
           <body>
             <div id="swagger-ui"></div>
-            <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+            <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"><\/script>
             <script>
               window.onload = () => {
                 window.ui = SwaggerUIBundle({
@@ -378,62 +341,56 @@ export default {
                   presets: [SwaggerUIBundle.presets.apis],
                 });
               };
-            </script>
+            <\/script>
           </body>
           </html>
         `;
-
         return new Response(html, {
-          headers: { 'content-type': 'text/html; charset=utf-8' },
+          headers: { "content-type": "text/html; charset=utf-8" }
         });
       }
-
-      // Separate route to serve the actual YAML file to the UI
-      if (url.pathname === '/help/raw' && request.method === 'GET') {
-        const helpBucket = env.HELP_BUCKET
-        const objectKey =
-          typeof env.HELP_BUCKET_OBJECT_KEY === 'string' && env.HELP_BUCKET_OBJECT_KEY.trim()
-            ? env.HELP_BUCKET_OBJECT_KEY.trim()
-            : 'openapi.yaml'
-
+      if (url.pathname === "/help/raw" && request.method === "GET") {
+        const helpBucket = env.HELP_BUCKET;
+        const objectKey = typeof env.HELP_BUCKET_OBJECT_KEY === "string" && env.HELP_BUCKET_OBJECT_KEY.trim() ? env.HELP_BUCKET_OBJECT_KEY.trim() : "openapi.yaml";
         if (helpBucket) {
-          const object = await helpBucket.get(objectKey)
+          const object = await helpBucket.get(objectKey);
           if (object) {
             return new Response(object.body, {
               headers: {
-                'content-type': 'text/yaml; charset=utf-8',
-                'access-control-allow-origin': '*',
-              },
-            })
+                "content-type": "text/yaml; charset=utf-8",
+                "access-control-allow-origin": "*"
+              }
+            });
           }
         }
-
         return new Response(OPENAPI_FALLBACK_YAML, {
           headers: {
-            'content-type': 'text/yaml; charset=utf-8',
-            'access-control-allow-origin': '*',
-          },
-        })
+            "content-type": "text/yaml; charset=utf-8",
+            "access-control-allow-origin": "*"
+          }
+        });
       }
-
-      if (request.method === 'GET' && url.pathname !== '/' && !url.pathname.startsWith('/help')) {
-        return fetchObjectByPublicPath(env, url.pathname)
+      if (request.method === "GET" && url.pathname !== "/" && !url.pathname.startsWith("/help")) {
+        return fetchObjectByPublicPath(env, url.pathname);
       }
-
-      if (url.pathname.startsWith('/api/')) {
-        return withCors(json({ error: 'Not found.' }, 404), request)
+      if (url.pathname.startsWith("/api/")) {
+        return withCors(json({ error: "Not found." }, 404), request);
       }
-
-      return json({ error: 'Not found.' }, 404)
+      return json({ error: "Not found." }, 404);
     } catch (error) {
-      if (url.pathname.startsWith('/api/')) {
+      if (url.pathname.startsWith("/api/")) {
         return withCors(
-          json({ error: error instanceof Error ? error.message : 'Unexpected error.' }, 500),
-          request,
-        )
+          json({ error: error instanceof Error ? error.message : "Unexpected error." }, 500),
+          request
+        );
       }
-
-      return json({ error: error instanceof Error ? error.message : 'Unexpected error.' }, 500)
+      return json({ error: error instanceof Error ? error.message : "Unexpected error." }, 500);
     }
-  },
-}
+  }
+};
+
+
+export {
+  index_default as default
+};
+//# sourceMappingURL=index.js.map
